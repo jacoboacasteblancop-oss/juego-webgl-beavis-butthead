@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego 3D – Beavis and Butt-Head (WebGL Nativo - Proyecto Universitario)</title>
+    <style>
+        /* =====================================================================
+           ESTILOS CSS PUROS (SIN LIBRERÍAS EXTERNAS) - ESTÉTICA MTV 90s / CÓMIC
+           ===================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #f8fafc;
+        }
+
+        #gl-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+            cursor: grab;
+        }
+        #gl-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* Tipografía estilo cómic / caricatura */
+        .title-cartoon {
+            font-family: Impact, 'Arial Black', sans-serif;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 0px #000000;
+        }
+
+        /* Contenedores estilo panel de cómic */
+        .comic-panel {
+            background: #18181b;
+            border: 3px solid #000000;
+            border-radius: 14px;
+            box-shadow: 6px 6px 0px #000000;
+        }
+
+        .comic-panel-sm {
+            background: rgba(24, 24, 27, 0.92);
+            border: 2px solid #000000;
+            border-radius: 10px;
+            box-shadow: 3px 3px 0px #000000;
+        }
+
+        /* Botones estilo Arcade / 90s */
+        .btn-arcade {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 3px solid #000000;
+            border-radius: 12px;
+            box-shadow: 0 4px 0 #000000;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+            padding: 10px 16px;
+            font-size: 0.95rem;
+        }
+
+        .btn-arcade:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #000000;
+            filter: brightness(1.08);
+        }
+
+        .btn-arcade:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #000000;
+        }
+
+        .btn-arcade:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .btn-green { background: #22c55e; color: #052e16; }
+        .btn-yellow { background: #facc15; color: #1c1917; }
+        .btn-purple { background: #9333ea; color: #ffffff; }
+        .btn-cyan { background: #22d3ee; color: #083344; }
+        .btn-red { background: #ef4444; color: #ffffff; }
+        .btn-dark { background: #3f3f46; color: #f4f4f5; }
+
+        /* Pantallas Superpuestas */
+        .overlay-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Pantalla de Inicio */
+        #screen-menu {
+            background: radial-gradient(circle at top, #f59e0b 0%, #b91c1c 48%, #1e1b4b 100%);
+        }
+
+        .menu-container {
+            width: 100%;
+            max-width: 960px;
+            padding: 24px;
+            margin: auto;
+        }
+
+        .menu-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 3px solid #000;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            background: #facc15;
+            color: #000;
+            font-weight: 900;
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 2px solid #000;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .menu-title {
+            font-size: clamp(2rem, 5vw, 3.4rem);
+            color: #facc15;
+            line-height: 1;
+        }
+
+        .menu-subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.35rem);
+            color: #67e8f9;
+            margin-top: 4px;
+        }
+
+        /* Grid de selección de personaje y opciones */
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            margin: 12px 0 18px 0;
+        }
+
+        .char-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #27272a;
+            border: 3px solid #52525b;
+            border-radius: 12px;
+            padding: 14px;
+            text-align: left;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .char-card.selected {
+            border-color: #facc15;
+            background: #3f3f46;
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.35), 4px 4px 0 #000;
+        }
+
+        .char-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            border: 2px solid #000;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .role-tag {
+            font-size: 0.68rem;
+            font-weight: 900;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1.5px solid #000;
+            margin-left: 6px;
+        }
+
+        .role-player { background: #facc15; color: #000; }
+        .role-npc { background: #a855f7; color: #fff; }
+
+        .menu-options-bar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: center;
+            background: #27272a;
+            border: 2px solid #000;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        @media (max-width: 720px) {
+            .menu-options-bar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* HUD en partida */
+        #hud-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+        }
+
+        .hud-top {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .hud-stats {
+            pointer-events: auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+        }
+
+        .stat-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #a1a1aa;
+            font-weight: 800;
+        }
+
+        .stat-value {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #f8fafc;
+        }
+
+        .hud-divider {
+            width: 2px;
+            height: 28px;
+            background: #3f3f46;
+        }
+
+        /* Monitor UML en vivo */
+        .uml-monitor {
+            pointer-events: auto;
+            width: 290px;
+            max-width: 92vw;
+            padding: 10px;
+            font-size: 0.72rem;
+        }
+
+        .uml-pills-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .uml-pill {
+            background: #1e293b;
+            border: 1.5px solid #475569;
+            border-radius: 6px;
+            padding: 3px 4px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.66rem;
+            color: #cbd5e1;
+            transition: all 0.15s ease;
+        }
+
+        .uml-pill.active-cu {
+            background: #facc15;
+            color: #000;
+            border-color: #000;
+            transform: scale(1.04);
+        }
+
+        /* Mensajes centrales de acción y diálogo NPC */
+        .hud-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: auto 0;
+        }
+
+        .proximity-badge {
+            background: rgba(0, 0, 0, 0.88);
+            color: #facc15;
+            border: 2px solid #facc15;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .dialog-box {
+            pointer-events: auto;
+            width: 100%;
+            max-width: 520px;
+            padding: 16px;
+            background: #18181b;
+            border: 3px solid #000;
+            border-radius: 14px;
+            box-shadow: 6px 6px 0 #000;
+        }
+
+        /* Controles táctiles / ratón inferiores */
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .dpad-box {
+            pointer-events: auto;
+            padding: 8px;
+        }
+
+        .dpad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 46px);
+            grid-template-rows: repeat(3, 46px);
+            gap: 4px;
+        }
+
+        .dpad-btn {
+            background: #3f3f46;
+            color: #fff;
+            border: 2px solid #000;
+            border-radius: 10px;
+            font-size: 1.15rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #000;
+        }
+
+        .dpad-btn:active, .dpad-btn.pressed {
+            background: #facc15;
+            color: #000;
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #000;
+        }
+
+        .action-buttons-group {
+            pointer-events: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* Barra de progreso de carga */
+        .progress-track {
+            width: 100%;
+            height: 22px;
+            background: #27272a;
+            border: 2px solid #000;
+            border-radius: 999px;
+            overflow: hidden;
+            padding: 2px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #facc15, #22c55e);
+            border-radius: 999px;
+            transition: width 0.15s ease;
+        }
+
+        /* Modal UML */
+        .uml-grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .uml-card-item {
+            background: #27272a;
+            border: 2px solid #3f3f46;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CANVAS WEBGL 1.0 NATIVO -->
+    <canvas id="gl-canvas"></canvas>
+
+    <!-- =====================================================================
+         PANTALLA 1: MENÚ PRINCIPAL / INICIO (CU001: Iniciar juego)
+         ===================================================================== -->
+    <section id="screen-menu" class="overlay-screen">
+        <div class="comic-panel menu-container">
+            <div class="menu-header">
+                <div>
+                    <span class="badge-pill">WebGL 1.0 Nativo + JS ES6+ • Proyecto Universitario UML</span>
+                    <h1 class="title-cartoon menu-title">BEAVIS AND BUTT-HEAD 3D</h1>
+                    <p class="title-cartoon menu-subtitle">Misión: Del Maxi Mart al Sofá y los Nachos</p>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                    <button id="btn-open-uml" class="btn-arcade btn-purple">📋 Ver Matriz UML (CU001–CU006)</button>
+                    <span style="font-size:0.72rem; color:#a1a1aa;">Precondición CU001: Estar en el menú principal</span>
+                </div>
+            </div>
+
+            <!-- Selección de Actor Principal (Jugador) y Actor Secundario (NPC) -->
+            <div>
+                <h2 style="font-size:0.95rem; margin-bottom:6px;">
+                    <span style="background:#3b82f6; color:#fff; padding:2px 8px; border-radius:6px; border:1px solid #000; font-size:0.72rem;">ACTOR: JUGADOR</span>
+                    Selecciona tu personaje jugable (el otro actuará como NPC en el Maxi Mart):
+                </h2>
+                <div class="char-grid">
+                    <!-- Beavis -->
+                    <button type="button" id="card-beavis" class="char-card selected">
+                        <div class="char-avatar" style="background:#1d4ed8;">
+                            <svg viewBox="0 0 64 64" width="54" height="54">
+                                <polygon points="16,22 25,3 39,5 48,20" fill="#fde047" stroke="#000" stroke-width="2.5"/>
+                                <rect x="19" y="20" width="26" height="24" rx="5" fill="#fed7aa" stroke="#000" stroke-width="2.5"/>
+                                <circle cx="27" cy="29" r="3" fill="#fff" stroke="#000" stroke-width="1.5"/>
+                                <circle cx="37" cy="29" r="3" fill="#fff" stroke="#000" stroke-width="1.5"/>
+                                <circle cx="27" cy="29" r="1.3" fill="#000"/>
+                                <circle cx="37" cy="29" r="1.3" fill="#000"/>
+                                <path d="M24,38 Q32,43 40,37" fill="none" stroke="#000" stroke-width="2.5"/>
+                                <rect x="15" y="44" width="34" height="18" rx="4" fill="#1d4ed8" stroke="#000" stroke-width="2.5"/>
+                                <text x="32" y="56" font-size="7" font-weight="900" fill="#facc15" text-anchor="middle">METALLICA</text>
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="display:flex; align-items:center;">
+                                <span class="title-cartoon" style="font-size:1.45rem; color:#fde047;">BEAVIS</span>
+                                <span id="tag-beavis" class="role-tag role-player">JUGADOR</span>
+                            </div>
+                            <p style="font-size:0.78rem; color:#d4d4d8; margin-top:4px;">
+                                Camiseta azul de Metallica, cabello rubio alto. "¡Heh-heh! ¡Vamos por nachos y Slushies!"
+                            </p>
+                        </div>
+                    </button>
+
+                    <!-- Butt-Head -->
+                    <button type="button" id="card-butthead" class="char-card">
+                        <div class="char-avatar" style="background:#3f3f46;">
+                            <svg viewBox="0 0 64 64" width="54" height="54">
+                                <path d="M17,22 Q32,7 47,22 Z" fill="#5c2d16" stroke="#000" stroke-width="2.5"/>
+                                <rect x="19" y="20" width="26" height="25" rx="5" fill="#fed7aa" stroke="#000" stroke-width="2.5"/>
+                                <circle cx="27" cy="29" r="3" fill="#fff" stroke="#000" stroke-width="1.5"/>
+                                <circle cx="37" cy="29" r="3" fill="#fff" stroke="#000" stroke-width="1.5"/>
+                                <circle cx="27" cy="29" r="1.3" fill="#000"/>
+                                <circle cx="37" cy="29" r="1.3" fill="#000"/>
+                                <rect x="24" y="36" width="16" height="5" rx="1" fill="#fff" stroke="#000" stroke-width="1.5"/>
+                                <line x1="24" y1="38.5" x2="40" y2="38.5" stroke="#000" stroke-width="1"/>
+                                <rect x="15" y="45" width="34" height="17" rx="4" fill="#3f3f46" stroke="#000" stroke-width="2.5"/>
+                                <text x="32" y="56" font-size="8" font-weight="900" fill="#ef4444" text-anchor="middle">AC/DC</text>
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="display:flex; align-items:center;">
+                                <span class="title-cartoon" style="font-size:1.45rem; color:#f87171;">BUTT-HEAD</span>
+                                <span id="tag-butthead" class="role-tag role-npc">NPC</span>
+                            </div>
+                            <p style="font-size:0.78rem; color:#d4d4d8; margin-top:4px;">
+                                Camiseta gris de AC/DC, brackets metálicos. "Uh-huh-huh, esto va a estar súper cool."
+                            </p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Descripción de las 3 Zonas y Botón Iniciar Juego -->
+            <div class="menu-options-bar">
+                <div style="font-size:0.8rem; line-height:1.45; color:#e4e4e7;">
+                    <p><strong style="color:#facc15;">Recorrido en 3 Zonas (WebGL 3D):</strong></p>
+                    <p>1. <strong>Estacionamiento Maxi Mart:</strong> Habla con tu compañero NPC, esquiva carritos patrullando y recoge los <em>Nachos</em> y el <em>Ultra Slushie</em>.</p>
+                    <p>2. <strong>Callejón Tóxico de Highland:</strong> Salta sobre residuos verdes y plataformas móviles, recoge el <em>Control Remoto</em> y activa el <em>Generador</em> para desplegar el puente.</p>
+                    <p>3. <strong>Sala de Estar:</strong> Llega al <em>Sofá frente al Televisor CRT</em> para completar el nivel (CU006).</p>
+                    <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                        <button type="button" id="btn-toggle-cam-menu" class="btn-arcade btn-dark" style="padding:5px 10px; font-size:0.75rem;">
+                            🎥 Cámara: <span id="menu-cam-label">3ra Persona Dinámica</span>
+                        </button>
+                        <span style="font-size:0.72rem; color:#a1a1aa;">Teclado: WASD/Flechas, Espacio, E, R, C, ESC | Arrastra para rotar vista</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:6px; min-width:215px;">
+                    <button type="button" id="btn-start-game" class="btn-arcade btn-green" style="font-size:1.3rem; padding:14px 20px;">
+                        ▶ INICIAR JUEGO
+                    </button>
+                    <span style="font-size:0.68rem; text-align:center; color:#86efac; font-weight:700;">
+                        CU001 + &lt;&lt;include&gt;&gt; Cargar nivel
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         PANTALLA 2: CARGANDO NIVEL (CU001 <<include>> Cargar nivel)
+         ===================================================================== -->
+    <section id="screen-loading" class="overlay-screen hidden" style="background:#09090b;">
+        <div class="comic-panel" style="width:100%; max-width:460px; padding:24px; text-align:center;">
+            <span class="badge-pill" style="background:#4ade80;">CU001 → &lt;&lt;include&gt;&gt; Cargar nivel</span>
+            <h2 class="title-cartoon" style="font-size:2.2rem; color:#facc15; margin:6px 0;">GENERANDO MUNDO WEBGL...</h2>
+            <p id="loading-detail" style="font-size:0.85rem; color:#d4d4d8; margin-bottom:14px;">
+                Compilando shaders GLSL y texturas procedurales...
+            </p>
+            <div class="progress-track">
+                <div id="loading-progress" class="progress-fill"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         HUD EN PARTIDA: CONTROLES FUNCIONALES Y MONITOR UML EN VIVO
+         ===================================================================== -->
+    <div id="hud-layer" class="hidden">
+        <!-- Fila Superior -->
+        <div class="hud-top">
+            <!-- Panel de Estado del Jugador y Misión -->
+            <div class="comic-panel-sm hud-stats">
+                <div class="stat-block">
+                    <span class="stat-label">Jugador</span>
+                    <span id="hud-actor-name" class="title-cartoon" style="font-size:1.2rem; color:#facc15;">BEAVIS</span>
+                </div>
+                <div class="hud-divider"></div>
+                <div class="stat-block">
+                    <span class="stat-label">Aguante</span>
+                    <span id="hud-health" class="stat-value">❤️❤️❤️</span>
+                </div>
+                <div class="hud-divider"></div>
+                <div class="stat-block">
+                    <span class="stat-label">Zona Actual</span>
+                    <span id="hud-zone" class="stat-value" style="color:#67e8f9;">1. Maxi Mart</span>
+                </div>
+                <div class="hud-divider"></div>
+                <div class="stat-block">
+                    <span class="stat-label">Objetos (CU004)</span>
+                    <span id="hud-items" class="stat-value" style="color:#fde047;">0/3</span>
+                </div>
+                <div class="hud-divider"></div>
+                <div class="stat-block">
+                    <span class="stat-label">Puente / NPC</span>
+                    <span id="hud-subgoals" class="stat-value" style="font-size:0.8rem;">Puente: OFF | NPC: ❌</span>
+                </div>
+                <div class="hud-divider"></div>
+                <div class="stat-block">
+                    <span class="stat-label">Puntos / Tiempo</span>
+                    <span id="hud-score-time" class="stat-value" style="font-family:monospace;">0 pts | 00:00</span>
+                </div>
+            </div>
+
+            <!-- Botones Superiores + Monitor UML -->
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                <div style="pointer-events:auto; display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end;">
+                    <button type="button" id="btn-hud-cam" class="btn-arcade btn-dark" style="padding:7px 11px; font-size:0.78rem;">🎥 Vista [C]</button>
+                    <button type="button" id="btn-hud-restart" class="btn-arcade btn-red" style="padding:7px 11px; font-size:0.78rem;">🔄 Reiniciar [R]</button>
+                    <button type="button" id="btn-hud-pause" class="btn-arcade btn-yellow" style="padding:7px 12px; font-size:0.78rem;">⏸ Pausar / Menú (CU005)</button>
+                </div>
+
+                <!-- Monitor UML Colapsable -->
+                <div class="comic-panel-sm uml-monitor">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3f3f46; padding-bottom:4px;">
+                        <strong style="color:#c084fc;">⚡ TRAZABILIDAD UML EN VIVO</strong>
+                        <button type="button" id="btn-toggle-uml-panel" style="background:#27272a; color:#fff; border:1px solid #52525b; border-radius:4px; padding:1px 6px; font-size:0.65rem; cursor:pointer;">Ocultar</button>
+                    </div>
+                    <div id="uml-monitor-body">
+                        <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.68rem;">
+                            <span id="uml-precond-ground" style="color:#4ade80;">Precond. Suelo: SÍ</span>
+                            <span id="uml-precond-near" style="color:#a1a1aa;">Cerca Obj: NO</span>
+                        </div>
+                        <div id="uml-active-trace" style="margin-top:4px; color:#facc15; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            CU001: Nivel 3D cargado
+                        </div>
+                        <div class="uml-pills-grid">
+                            <div id="cu-pill-CU001" class="uml-pill active-cu">CU001 Inicio</div>
+                            <div id="cu-pill-CU002" class="uml-pill">CU002 Mover</div>
+                            <div id="cu-pill-CU003" class="uml-pill">CU003 Saltar</div>
+                            <div id="cu-pill-CU004" class="uml-pill">CU004 Objeto</div>
+                            <div id="cu-pill-CU005" class="uml-pill">CU005 Pausa</div>
+                            <div id="cu-pill-CU006" class="uml-pill">CU006 Final</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila Central: Avisos de Proximidad y Caja de Acción / Diálogo NPC -->
+        <div class="hud-center">
+            <div id="hud-proximity-tip" class="proximity-badge hidden">
+                ⚡ Pulsa [E] o "INTERACTUAR"
+            </div>
+
+            <div id="hud-dialog-box" class="dialog-box hidden">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span id="dialog-uml-tag" class="badge-pill" style="margin:0; font-size:0.65rem;">CU004 &lt;&lt;include&gt;&gt; Mostrar mensaje</span>
+                    <button type="button" id="btn-dialog-close" style="background:#3f3f46; color:#fff; border:none; border-radius:6px; padding:3px 8px; font-weight:700; cursor:pointer;">✕</button>
+                </div>
+                <h3 id="dialog-title" class="title-cartoon" style="font-size:1.45rem; color:#facc15;">Título de Acción</h3>
+                <p id="dialog-text" style="font-size:0.86rem; color:#f4f4f5; margin-top:4px; line-height:1.4;">Contenido del mensaje.</p>
+                <div id="dialog-npc-actions" class="hidden" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="btn-npc-next-line" class="btn-arcade btn-purple" style="padding:6px 12px; font-size:0.78rem;">💬 Seguir hablando con NPC</button>
+                    <button type="button" id="btn-npc-done" class="btn-arcade btn-dark" style="padding:6px 12px; font-size:0.78rem;">👍 "¡Cool, vamos!"</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila Inferior: Cruceta Táctil y Botones de Acción -->
+        <div class="hud-bottom">
+            <!-- Cruceta de Movimiento (CU002) -->
+            <div class="comic-panel-sm dpad-box">
+                <div style="font-size:0.62rem; text-align:center; font-weight:800; color:#a1a1aa; margin-bottom:4px;">CU002: MOVER</div>
+                <div class="dpad-grid">
+                    <div></div>
+                    <button type="button" id="btn-pad-up" class="dpad-btn" aria-label="Adelante">▲</button>
+                    <div></div>
+                    <button type="button" id="btn-pad-left" class="dpad-btn" aria-label="Izquierda">◀</button>
+                    <div style="display:flex; align-items:center; justify-content:center; font-size:0.62rem; color:#71717a; font-weight:800;">3D</div>
+                    <button type="button" id="btn-pad-right" class="dpad-btn" aria-label="Derecha">▶</button>
+                    <div></div>
+                    <button type="button" id="btn-pad-down" class="dpad-btn" aria-label="Atrás">▼</button>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- Botones Interactuar (CU004) y Saltar (CU003) -->
+            <div class="action-buttons-group">
+                <button type="button" id="btn-action-interact" class="btn-arcade btn-purple" style="padding:14px 18px; font-size:1rem;">
+                    ⚡ INTERACTUAR [E]
+                </button>
+                <button type="button" id="btn-action-jump" class="btn-arcade btn-cyan" style="padding:16px 24px; font-size:1.15rem;">
+                    ⬆️ SALTAR [ESPACIO]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         PANTALLA 3: PAUSA / MENÚ (CU005: Pausar / Menú -> <<include>> Mostrar menú)
+         ===================================================================== -->
+    <section id="screen-pause" class="overlay-screen hidden" style="background:rgba(0,0,0,0.78);">
+        <div class="comic-panel" style="width:100%; max-width:430px; padding:24px; text-align:center;">
+            <span class="badge-pill">CU005: Pausar / Menú • Precondición: Juego en progreso</span>
+            <h2 class="title-cartoon" style="font-size:2.6rem; color:#facc15; margin:6px 0;">PAUSA</h2>
+            <p style="font-size:0.85rem; color:#d4d4d8; margin-bottom:18px;">
+                Simulación WebGL pausada. Elige una acción del menú:
+            </p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="btn-pause-resume" class="btn-arcade btn-green" style="font-size:1.1rem;">▶ REANUDAR PARTIDA</button>
+                <button type="button" id="btn-pause-restart" class="btn-arcade btn-yellow" style="font-size:1.05rem;">🔄 REINICIAR NIVEL</button>
+                <button type="button" id="btn-pause-uml" class="btn-arcade btn-purple" style="font-size:0.95rem;">📋 Ver Diagrama de Casos de Uso</button>
+                <button type="button" id="btn-pause-menu" class="btn-arcade btn-red" style="font-size:1.05rem;">🏠 MOSTRAR MENÚ PRINCIPAL (&lt;&lt;include&gt;&gt;)</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         PANTALLA 4: NIVEL COMPLETADO (CU006: Finalizar nivel)
+         ===================================================================== -->
+    <section id="screen-victory" class="overlay-screen hidden" style="background:rgba(0,0,0,0.82);">
+        <div class="comic-panel" style="width:100%; max-width:520px; padding:24px; text-align:center;">
+            <span class="badge-pill" style="background:#4ade80;">CU006: Finalizar nivel → &lt;&lt;include&gt;&gt; Mostrar pantalla de completado</span>
+            <h2 class="title-cartoon" style="font-size:2.7rem; color:#facc15; margin:6px 0;">¡NIVEL COMPLETADO!</h2>
+            <p id="victory-phrase" style="font-size:0.95rem; font-weight:700; color:#67e8f9; margin-bottom:14px;">
+                "¡Heh-heh! ¡Llegamos al sofá y tenemos nachos y Slushies!"
+            </p>
+
+            <div style="background:#27272a; border:2px solid #000; border-radius:10px; padding:14px; text-align:left; font-size:0.82rem; margin-bottom:16px; line-height:1.6;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">Actor Principal (Jugador):</span>
+                    <strong id="vic-player" style="color:#facc15;">Beavis</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">Actor Secundario (NPC):</span>
+                    <strong id="vic-npc" style="color:#c084fc;">Butt-Head</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">Actor Secundario (Sistema):</span>
+                    <strong style="color:#4ade80;">Gestión de niveles (Objetivo cumplido)</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">Puntuación Final / Tiempo:</span>
+                    <strong id="vic-score" style="color:#fff;">1500 pts | 01:12</strong>
+                </div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid #3f3f46;">
+                    <span style="color:#a1a1aa; display:block; margin-bottom:4px;">Casos de Uso ejecutados (Trazabilidad):</span>
+                    <div id="vic-cu-badges" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <button type="button" id="btn-vic-replay" class="btn-arcade btn-green" style="font-size:1.05rem;">🔄 JUGAR DE NUEVO</button>
+                <button type="button" id="btn-vic-menu" class="btn-arcade btn-yellow" style="font-size:1.05rem;">🏠 MENÚ PRINCIPAL</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         PANTALLA 5: REINICIAR NIVEL SI SE PIERDE (CU006 <<extend>> Reiniciar nivel)
+         ===================================================================== -->
+    <section id="screen-gameover" class="overlay-screen hidden" style="background:rgba(69,10,10,0.86);">
+        <div class="comic-panel" style="width:100%; max-width:440px; padding:24px; text-align:center;">
+            <span class="badge-pill" style="background:#a855f7; color:#fff;">Sistema (Gestión de niveles) • &lt;&lt;extend&gt;&gt; Reiniciar nivel (si se pierde)</span>
+            <h2 class="title-cartoon" style="font-size:2.6rem; color:#f87171; margin:6px 0;">¡PERDISTE, DUMBASS!</h2>
+            <p id="gameover-msg" style="font-size:0.88rem; color:#e4e4e7; margin-bottom:18px;">
+                Te quedaste sin puntos de aguante en las calles de Highland.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="btn-over-restart" class="btn-arcade btn-yellow" style="font-size:1.15rem;">🔄 REINICIAR NIVEL</button>
+                <button type="button" id="btn-over-menu" class="btn-arcade btn-dark" style="font-size:0.95rem;">🏠 Volver al Menú Principal</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         MODAL: MATRIZ COMPLETA DE CASOS DE USO (DIAGRAMAS UML)
+         ===================================================================== -->
+    <section id="modal-uml" class="overlay-screen hidden" style="background:rgba(0,0,0,0.85); z-index:50;">
+        <div class="comic-panel" style="width:100%; max-width:860px; padding:22px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #3f3f46; padding-bottom:10px;">
+                <div>
+                    <h2 class="title-cartoon" style="font-size:1.9rem; color:#facc15;">ESPECIFICACIÓN DE CASOS DE USO (UML)</h2>
+                    <p style="font-size:0.78rem; color:#a1a1aa;">Actores: Jugador (Usuario), NPC (Beavis / Butt-Head), Sistema (Gestión de niveles)</p>
+                </div>
+                <button type="button" id="btn-close-uml" class="btn-arcade btn-red" style="padding:6px 12px; font-size:0.82rem;">✕ Cerrar</button>
+            </div>
+
+            <div class="uml-grid-cards">
+                <div class="uml-card-item">
+                    <strong style="color:#60a5fa;">ID: CU001 – Iniciar juego</strong><br>
+                    <strong>Actor Principal:</strong> Jugador (Usuario)<br>
+                    <strong>Include:</strong> Cargar nivel<br>
+                    <strong>Precondición:</strong> Estar en el menú principal.<br>
+                    <strong>Descripción:</strong> Activa el inicio de la partida desde el menú, cargando el entorno 3D y al personaje.
+                </div>
+                <div class="uml-card-item">
+                    <strong style="color:#60a5fa;">ID: CU002 – Mover personaje</strong><br>
+                    <strong>Actor Principal:</strong> Jugador (Usuario)<br>
+                    <strong>Include:</strong> Reproducir animación de movimiento<br>
+                    <strong>Precondición:</strong> El nivel debe estar cargado.<br>
+                    <strong>Descripción:</strong> Desplaza a Beavis o Butt-Head por las 3 zonas del nivel 3D.
+                </div>
+                <div class="uml-card-item">
+                    <strong style="color:#60a5fa;">ID: CU003 – Saltar</strong><br>
+                    <strong>Actor Principal:</strong> Jugador (Usuario)<br>
+                    <strong>Include:</strong> Reproducir animación de salto<br>
+                    <strong>Precondición:</strong> El personaje debe estar en el suelo.<br>
+                    <strong>Descripción:</strong> Salta obstáculos móviles (carritos/barriles) y brechas tóxicas.
+                </div>
+                <div class="uml-card-item">
+                    <strong style="color:#60a5fa;">ID: CU004 – Interactuar con objetos</strong><br>
+                    <strong>Actores:</strong> Jugador, NPC (Beavis / Butt-Head)<br>
+                    <strong>Include:</strong> Mostrar mensaje o acción<br>
+                    <strong>Extend:</strong> Hablar / Interactuar con NPC<br>
+                    <strong>Precondición:</strong> Estar cerca de un objeto interactuable.
+                </div>
+                <div class="uml-card-item">
+                    <strong style="color:#60a5fa;">ID: CU005 – Pausar / Menú</strong><br>
+                    <strong>Actor Principal:</strong> Jugador (Usuario)<br>
+                    <strong>Include:</strong> Mostrar menú principal<br>
+                    <strong>Precondición:</strong> El juego debe estar en progreso.<br>
+                    <strong>Descripción:</strong> Detiene la simulación WebGL y muestra las opciones de menú.
+                </div>
+                <div class="uml-card-item">
+                    <strong style="color:#60a5fa;">ID: CU006 – Finalizar nivel</strong><br>
+                    <strong>Actores:</strong> Jugador, Sistema (Gestión de niveles)<br>
+                    <strong>Include:</strong> Mostrar pantalla de completado<br>
+                    <strong>Extend:</strong> Reiniciar nivel (si se pierde)<br>
+                    <strong>Precondición:</strong> Haber alcanzado el objetivo final (Sofá).
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /**
+         * =========================================================================
+         * MOTOR 3D EN WEBGL 1.0 NATIVO + JAVASCRIPT ES6+ ORIENTADO A OBJETOS
+         * Proyecto Universitario: Juego 3D – Beavis and Butt-Head
+         * Cero librerías externas (100% WebGL nativo, GLSL shaders y álgebra 4x4)
+         * =========================================================================
+         */
+
+        /* =========================================================================
+           CLASE 1: Mat4 - Álgebra Matricial 4x4 desde cero para WebGL
+           ========================================================================= */
+        class Mat4 {
+            static create() {
+                const out = new Float32Array(16);
+                out[0] = 1; out[5] = 1; out[10] = 1; out[15] = 1;
+                return out;
+            }
+
+            static identity(out) {
+                out.fill(0);
+                out[0] = 1; out[5] = 1; out[10] = 1; out[15] = 1;
+                return out;
+            }
+
+            static multiply(out, a, b) {
+                const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+                const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+                const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+                const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+                let b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
+                out[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+                out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+                out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+                out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+                b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+                out[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+                out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+                out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+                out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+                b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+                out[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+                out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+                out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+                out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+                b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+                out[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+                out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+                out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+                out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+                return out;
+            }
+
+            static perspective(out, fovy, aspect, near, far) {
+                const f = 1.0 / Math.tan(fovy / 2);
+                const nf = 1 / (near - far);
+                out.fill(0);
+                out[0] = f / aspect;
+                out[5] = f;
+                out[10] = (far + near) * nf;
+                out[11] = -1;
+                out[14] = 2 * far * near * nf;
+                return out;
+            }
+
+            static lookAt(out, eye, center, up) {
+                let z0 = eye[0] - center[0];
+                let z1 = eye[1] - center[1];
+                let z2 = eye[2] - center[2];
+                let len = Math.hypot(z0, z1, z2);
+                if (len > 0) { z0 /= len; z1 /= len; z2 /= len; }
+
+                let x0 = up[1] * z2 - up[2] * z1;
+                let x1 = up[2] * z0 - up[0] * z2;
+                let x2 = up[0] * z1 - up[1] * z0;
+                len = Math.hypot(x0, x1, x2);
+                if (len > 0) { x0 /= len; x1 /= len; x2 /= len; }
+
+                const y0 = z1 * x2 - z2 * x1;
+                const y1 = z2 * x0 - z0 * x2;
+                const y2 = z0 * x1 - z1 * x0;
+
+                out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+                out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+                out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+                out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+                out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+                out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+                out[15] = 1;
+                return out;
+            }
+
+            static composeTRS(out, pos, rotY, rotX, scale) {
+                const cy = Math.cos(rotY), sy = Math.sin(rotY);
+                const cx = Math.cos(rotX), sx = Math.sin(rotX);
+
+                // Rotación Y * Rotación X * Escala
+                const r00 = cy;
+                const r01 = sy * sx;
+                const r02 = sy * cx;
+
+                const r10 = 0;
+                const r11 = cx;
+                const r12 = -sx;
+
+                const r20 = -sy;
+                const r21 = cy * sx;
+                const r22 = cy * cx;
+
+                out[0] = r00 * scale[0];
+                out[1] = r10 * scale[0];
+                out[2] = r20 * scale[0];
+                out[3] = 0;
+
+                out[4] = r01 * scale[1];
+                out[5] = r11 * scale[1];
+                out[6] = r21 * scale[1];
+                out[7] = 0;
+
+                out[8] = r02 * scale[2];
+                out[9] = r12 * scale[2];
+                out[10] = r22 * scale[2];
+                out[11] = 0;
+
+                out[12] = pos[0];
+                out[13] = pos[1];
+                out[14] = pos[2];
+                out[15] = 1;
+                return out;
+            }
+        }
+
+        /* =========================================================================
+           CLASE 2: ProceduralTextures - Generador de Texturas 2D para WebGL
+           ========================================================================= */
+        class ProceduralTextures {
+            constructor(gl) {
+                this.gl = gl;
+                this.textures = {};
+                this.tvCanvas = null;
+                this.tvCtx = null;
+                this.tvTexture = null;
+                this.initAll();
+            }
+
+            createTextureFromCanvas(canvas, repeat = true) {
+                const gl = this.gl;
+                const tex = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+                gl.generateMipmap(gl.TEXTURE_2D);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                const wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+                return tex;
+            }
+
+            initAll() {
+                // 1. Textura blanca base (1x1) para geometría coloreada
+                const whiteC = document.createElement('canvas');
+                whiteC.width = 4; whiteC.height = 4;
+                const wCtx = whiteC.getContext('2d');
+                wCtx.fillStyle = '#ffffff';
+                wCtx.fillRect(0, 0, 4, 4);
+                this.textures.white = this.createTextureFromCanvas(whiteC);
+
+                // 2. Asfalto de Estacionamiento Maxi Mart con líneas amarillas
+                const asphaltC = document.createElement('canvas');
+                asphaltC.width = 256; asphaltC.height = 256;
+                const aCtx = asphaltC.getContext('2d');
+                aCtx.fillStyle = '#334155';
+                aCtx.fillRect(0, 0, 256, 256);
+                for (let i = 0; i < 1800; i++) {
+                    aCtx.fillStyle = Math.random() > 0.5 ? '#475569' : '#1e293b';
+                    aCtx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+                }
+                aCtx.fillStyle = '#facc15';
+                aCtx.fillRect(16, 0, 10, 256);
+                aCtx.fillRect(230, 0, 10, 256);
+                this.textures.asphalt = this.createTextureFromCanvas(asphaltC);
+
+                // 3. Ladrillo de la fachada Maxi Mart / Callejón
+                const brickC = document.createElement('canvas');
+                brickC.width = 256; brickC.height = 256;
+                const bCtx = brickC.getContext('2d');
+                bCtx.fillStyle = '#991b1b';
+                bCtx.fillRect(0, 0, 256, 256);
+                bCtx.fillStyle = '#d6d3d1';
+                for (let y = 0; y < 256; y += 32) {
+                    bCtx.fillRect(0, y, 256, 3);
+                    const offset = (y / 32) % 2 === 0 ? 0 : 32;
+                    for (let x = offset; x < 256; x += 64) {
+                        bCtx.fillRect(x, y, 3, 32);
+                    }
+                }
+                this.textures.brick = this.createTextureFromCanvas(brickC);
+
+                // 4. Letrero MAXI MART
+                const signC = document.createElement('canvas');
+                signC.width = 512; signC.height = 128;
+                const sCtx = signC.getContext('2d');
+                sCtx.fillStyle = '#facc15';
+                sCtx.fillRect(0, 0, 512, 128);
+                sCtx.strokeStyle = '#dc2626';
+                sCtx.lineWidth = 10;
+                sCtx.strokeRect(6, 6, 500, 116);
+                sCtx.fillStyle = '#dc2626';
+                sCtx.font = '900 68px Impact, Arial Black, sans-serif';
+                sCtx.textAlign = 'center';
+                sCtx.textBaseline = 'middle';
+                sCtx.fillText('MAXI MART', 256, 66);
+                this.textures.maximart = this.createTextureFromCanvas(signC, false);
+
+                // 5. Alfombra y Madera de la Sala de Estar
+                const carpetC = document.createElement('canvas');
+                carpetC.width = 256; carpetC.height = 256;
+                const cCtx = carpetC.getContext('2d');
+                cCtx.fillStyle = '#78350f';
+                cCtx.fillRect(0, 0, 256, 256);
+                cCtx.strokeStyle = '#92400e';
+                cCtx.lineWidth = 4;
+                for (let i = 0; i < 256; i += 16) {
+                    cCtx.strokeRect(i / 2, i / 2, 256 - i, 256 - i);
+                }
+                this.textures.carpet = this.createTextureFromCanvas(carpetC);
+
+                // 6. Póster de Rock en la Sala
+                const posterC = document.createElement('canvas');
+                posterC.width = 256; posterC.height = 256;
+                const pCtx = posterC.getContext('2d');
+                pCtx.fillStyle = '#09090b';
+                pCtx.fillRect(0, 0, 256, 256);
+                pCtx.strokeStyle = '#facc15';
+                pCtx.lineWidth = 8;
+                pCtx.strokeRect(8, 8, 240, 240);
+                pCtx.fillStyle = '#ef4444';
+                pCtx.font = '900 44px Impact, sans-serif';
+                pCtx.textAlign = 'center';
+                pCtx.fillText('HEAVY', 128, 95);
+                pCtx.fillStyle = '#facc15';
+                pCtx.fillText('METAL!', 128, 155);
+                pCtx.fillStyle = '#22d3ee';
+                pCtx.font = 'bold 22px sans-serif';
+                pCtx.fillText('RULES!!', 128, 205);
+                this.textures.poster = this.createTextureFromCanvas(posterC, false);
+
+                // 7. Pantalla CRT Dinámica del Televisor
+                this.tvCanvas = document.createElement('canvas');
+                this.tvCanvas.width = 256;
+                this.tvCanvas.height = 192;
+                this.tvCtx = this.tvCanvas.getContext('2d');
+                this.tvTexture = this.createTextureFromCanvas(this.tvCanvas, false);
+                this.textures.tv = this.tvTexture;
+            }
+
+            updateTVTexture(time) {
+                const gl = this.gl;
+                const ctx = this.tvCtx;
+                const w = this.tvCanvas.width;
+                const h = this.tvCanvas.height;
+
+                // Fondo estilo videoclip MTV 90s animado
+                const hue = (time * 90) % 360;
+                ctx.fillStyle = `hsl(${hue}, 75%, 22%)`;
+                ctx.fillRect(0, 0, w, h);
+
+                // Barras de ecualizador musical
+                for (let i = 0; i < 12; i++) {
+                    const barH = 25 + Math.abs(Math.sin(time * 6 + i * 0.7)) * 90;
+                    ctx.fillStyle = i % 2 === 0 ? '#facc15' : '#22d3ee';
+                    ctx.fillRect(14 + i * 19, h - barH - 22, 14, barH);
+                }
+
+                // Texto MTV / ROCK
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '900 28px Impact, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('MTV ROCKS!', w / 2, 38);
+
+                // Líneas CRT horizontales
+                ctx.fillStyle = 'rgba(0,0,0,0.28)';
+                for (let y = 0; y < h; y += 4) {
+                    ctx.fillRect(0, y, w, 1.5);
+                }
+
+                gl.bindTexture(gl.TEXTURE_2D, this.tvTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.tvCanvas);
+            }
+        }
+
+        /* =========================================================================
+           CLASE 3: WebGLRendererNative - Motor WebGL 1.0 con Shaders GLSL propios
+           ========================================================================= */
+        class WebGLRendererNative {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.gl = canvas.getContext('webgl', { antialias: true });
+                if (!this.gl) {
+                    throw new Error('Tu navegador no soporta WebGL 1.0');
+                }
+
+                this.program = this.createShaderProgram();
+                this.locations = {
+                    aPosition: this.gl.getAttribLocation(this.program, 'aPosition'),
+                    aNormal: this.gl.getAttribLocation(this.program, 'aNormal'),
+                    aTexCoord: this.gl.getAttribLocation(this.program, 'aTexCoord'),
+                    uModel: this.gl.getUniformLocation(this.program, 'uModel'),
+                    uView: this.gl.getUniformLocation(this.program, 'uView'),
+                    uProjection: this.gl.getUniformLocation(this.program, 'uProjection'),
+                    uColor: this.gl.getUniformLocation(this.program, 'uColor'),
+                    uEmissive: this.gl.getUniformLocation(this.program, 'uEmissive'),
+                    uLightDir: this.gl.getUniformLocation(this.program, 'uLightDir'),
+                    uFogColor: this.gl.getUniformLocation(this.program, 'uFogColor'),
+                    uSampler: this.gl.getUniformLocation(this.program, 'uSampler'),
+                    uTexScale: this.gl.getUniformLocation(this.program, 'uTexScale')
+                };
+
+                this.boxMesh = this.createUnitCubeBuffers();
+                this.projMatrix = Mat4.create();
+                this.viewMatrix = Mat4.create();
+                this.tempMatrix = Mat4.create();
+
+                this.gl.enable(this.gl.DEPTH_TEST);
+                this.gl.enable(this.gl.CULL_FACE);
+                this.resize();
+            }
+
+            createShaderProgram() {
+                const gl = this.gl;
+
+                const vsSource = `
+                    attribute vec3 aPosition;
+                    attribute vec3 aNormal;
+                    attribute vec2 aTexCoord;
+
+                    uniform mat4 uModel;
+                    uniform mat4 uView;
+                    uniform mat4 uProjection;
+                    uniform vec2 uTexScale;
+
+                    varying vec3 vNormal;
+                    varying vec2 vTexCoord;
+                    varying float vFogDepth;
+
+                    void main() {
+                        vec4 worldPos = uModel * vec4(aPosition, 1.0);
+                        vec4 viewPos = uView * worldPos;
+                        gl_Position = uProjection * viewPos;
+
+                        vNormal = mat3(uModel) * aNormal;
+                        vTexCoord = aTexCoord * uTexScale;
+                        vFogDepth = -viewPos.z;
+                    }
+                `;
+
+                const fsSource = `
+                    precision mediump float;
+
+                    varying vec3 vNormal;
+                    varying vec2 vTexCoord;
+                    varying float vFogDepth;
+
+                    uniform vec3 uColor;
+                    uniform vec3 uEmissive;
+                    uniform vec3 uLightDir;
+                    uniform vec3 uFogColor;
+                    uniform sampler2D uSampler;
+
+                    void main() {
+                        vec3 norm = normalize(vNormal);
+                        vec3 lightDir = normalize(uLightDir);
+
+                        float diff = max(dot(norm, lightDir), 0.0);
+                        vec3 ambient = vec3(0.42, 0.44, 0.48);
+                        vec3 lighting = ambient + diff * vec3(0.75, 0.72, 0.65);
+
+                        vec4 texColor = texture2D(uSampler, vTexCoord);
+                        vec3 baseColor = texColor.rgb * uColor * lighting + uEmissive;
+
+                        float fogFactor = smoothstep(38.0, 98.0, vFogDepth);
+                        vec3 finalColor = mix(baseColor, uFogColor, fogFactor);
+
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `;
+
+                const vs = this.compileShader(gl.VERTEX_SHADER, vsSource);
+                const fs = this.compileShader(gl.FRAGMENT_SHADER, fsSource);
+
+                const prog = gl.createProgram();
+                gl.attachShader(prog, vs);
+                gl.attachShader(prog, fs);
+                gl.linkProgram(prog);
+                return prog;
+            }
+
+            compileShader(type, source) {
+                const gl = this.gl;
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                return shader;
+            }
+
+            createUnitCubeBuffers() {
+                const gl = this.gl;
+                // 24 vértices (4 por cara para normales e iluminación nítida estilo caricatura)
+                const positions = new Float32Array([
+                    // Frente (+Z)
+                    -0.5, -0.5,  0.5,   0.5, -0.5,  0.5,   0.5,  0.5,  0.5,  -0.5,  0.5,  0.5,
+                    // Atrás (-Z)
+                     0.5, -0.5, -0.5,  -0.5, -0.5, -0.5,  -0.5,  0.5, -0.5,   0.5,  0.5, -0.5,
+                    // Arriba (+Y)
+                    -0.5,  0.5,  0.5,   0.5,  0.5,  0.5,   0.5,  0.5, -0.5,  -0.5,  0.5, -0.5,
+                    // Abajo (-Y)
+                    -0.5, -0.5, -0.5,   0.5, -0.5, -0.5,   0.5, -0.5,  0.5,  -0.5, -0.5,  0.5,
+                    // Derecha (+X)
+                     0.5, -0.5,  0.5,   0.5, -0.5, -0.5,   0.5,  0.5, -0.5,   0.5,  0.5,  0.5,
+                    // Izquierda (-X)
+                    -0.5, -0.5, -0.5,  -0.5, -0.5,  0.5,  -0.5,  0.5,  0.5,  -0.5,  0.5, -0.5
+                ]);
+
+                const normals = new Float32Array([
+                     0,  0,  1,   0,  0,  1,   0,  0,  1,   0,  0,  1,
+                     0,  0, -1,   0,  0, -1,   0,  0, -1,   0,  0, -1,
+                     0,  1,  0,   0,  1,  0,   0,  1,  0,   0,  1,  0,
+                     0, -1,  0,   0, -1,  0,   0, -1,  0,   0, -1,  0,
+                     1,  0,  0,   1,  0,  0,   1,  0,  0,   1,  0,  0,
+                    -1,  0,  0,  -1,  0,  0,  -1,  0,  0,  -1,  0,  0
+                ]);
+
+                const uvs = new Float32Array([
+                    0, 1,  1, 1,  1, 0,  0, 0,
+                    0, 1,  1, 1,  1, 0,  0, 0,
+                    0, 1,  1, 1,  1, 0,  0, 0,
+                    0, 1,  1, 1,  1, 0,  0, 0,
+                    0, 1,  1, 1,  1, 0,  0, 0,
+                    0, 1,  1, 1,  1, 0,  0, 0
+                ]);
+
+                const indices = new Uint16Array([
+                     0,  1,  2,   0,  2,  3,
+                     4,  5,  6,   4,  6,  7,
+                     8,  9, 10,   8, 10, 11,
+                    12, 13, 14,  12, 14, 15,
+                    16, 17, 18,  16, 18, 19,
+                    20, 21, 22,  20, 22, 23
+                ]);
+
+                const posBuf = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+                const normBuf = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, normBuf);
+                gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+
+                const uvBuf = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
+                gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.STATIC_DRAW);
+
+                const idxBuf = gl.createBuffer();
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+                return { posBuf, normBuf, uvBuf, idxBuf, count: indices.length };
+            }
+
+            resize() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const w = Math.floor(window.innerWidth * dpr);
+                const h = Math.floor(window.innerHeight * dpr);
+                if (this.canvas.width !== w || this.canvas.height !== h) {
+                    this.canvas.width = w;
+                    this.canvas.height = h;
+                }
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                const aspect = this.canvas.width / Math.max(1, this.canvas.height);
+                Mat4.perspective(this.projMatrix, Math.PI / 3, aspect, 0.1, 160);
+            }
+
+            beginFrame(eye, target, skyColor = [0.35, 0.65, 0.96]) {
+                const gl = this.gl;
+                this.resize();
+                gl.clearColor(skyColor[0], skyColor[1], skyColor[2], 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                gl.useProgram(this.program);
+                Mat4.lookAt(this.viewMatrix, eye, target, [0, 1, 0]);
+
+                gl.uniformMatrix4fv(this.locations.uProjection, false, this.projMatrix);
+                gl.uniformMatrix4fv(this.locations.uView, false, this.viewMatrix);
+                gl.uniform3fv(this.locations.uLightDir, [0.45, 0.85, 0.55]);
+                gl.uniform3fv(this.locations.uFogColor, skyColor);
+
+                // Vincular buffers del cubo unitario
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.boxMesh.posBuf);
+                gl.enableVertexAttribArray(this.locations.aPosition);
+                gl.vertexAttribPointer(this.locations.aPosition, 3, gl.FLOAT, false, 0, 0);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.boxMesh.normBuf);
+                gl.enableVertexAttribArray(this.locations.aNormal);
+                gl.vertexAttribPointer(this.locations.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.boxMesh.uvBuf);
+                gl.enableVertexAttribArray(this.locations.aTexCoord);
+                gl.vertexAttribPointer(this.locations.aTexCoord, 2, gl.FLOAT, false, 0, 0);
+
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.boxMesh.idxBuf);
+            }
+
+            drawBox({ pos, rotY = 0, rotX = 0, scale, color = [1, 1, 1], emissive = [0, 0, 0], texture, texScale = [1, 1] }) {
+                const gl = this.gl;
+                Mat4.composeTRS(this.tempMatrix, pos, rotY, rotX, scale);
+
+                gl.uniformMatrix4fv(this.locations.uModel, false, this.tempMatrix);
+                gl.uniform3fv(this.locations.uColor, color);
+                gl.uniform3fv(this.locations.uEmissive, emissive);
+                gl.uniform2fv(this.locations.uTexScale, texScale);
+
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.uniform1i(this.locations.uSampler, 0);
+
+                gl.drawElements(gl.TRIANGLES, this.boxMesh.count, gl.UNSIGNED_SHORT, 0);
+            }
+        }
+
+        /* =========================================================================
+           CLASE 4: CharacterMesh - Modelo 3D Articulado de Beavis y Butt-Head
+           ========================================================================= */
+        class CharacterMesh {
+            constructor(type) {
+                this.type = type; // 'beavis' | 'butthead'
+                this.pos = [0, 0, 0];
+                this.rotY = Math.PI;
+                this.animTime = 0;
+                this.isMoving = false;
+                this.isGrounded = true;
+            }
+
+            updateAnimation(dt, isMoving, isGrounded) {
+                this.isMoving = isMoving;
+                this.isGrounded = isGrounded;
+                if (!isGrounded) {
+                    this.animTime += dt * 4;
+                } else if (isMoving) {
+                    this.animTime += dt * 13;
+                } else {
+                    this.animTime += dt * 2.5;
+                }
+            }
+
+            render(renderer, whiteTex) {
+                const isBeavis = (this.type === 'beavis');
+                const skin = [1.0, 0.81, 0.64];
+                const shirt = isBeavis ? [0.11, 0.31, 0.85] : [0.25, 0.25, 0.28];
+                const logoColor = isBeavis ? [0.98, 0.82, 0.1] : [0.93, 0.26, 0.26];
+                const shorts = isBeavis ? [0.22, 0.25, 0.32] : [0.60, 0.12, 0.12];
+                const hair = isBeavis ? [0.99, 0.88, 0.28] : [0.36, 0.18, 0.09];
+                const shoe = [0.08, 0.08, 0.10];
+
+                const armSwing = !this.isGrounded ? -2.2 : (this.isMoving ? Math.sin(this.animTime) * 0.75 : Math.sin(this.animTime) * 0.06);
+                const legSwing = !this.isGrounded ? 0.55 : (this.isMoving ? Math.sin(this.animTime) * 0.75 : 0);
+                const bobY = this.isMoving && this.isGrounded ? Math.abs(Math.sin(this.animTime)) * 0.08 : 0;
+
+                const helperPart = (lx, ly, lz, sx, sy, sz, color, localRotX = 0) => {
+                    const cos = Math.cos(this.rotY);
+                    const sin = Math.sin(this.rotY);
+                    const wx = this.pos[0] + lx * cos + lz * sin;
+                    const wy = this.pos[1] + ly + bobY;
+                    const wz = this.pos[2] - lx * sin + lz * cos;
+                    renderer.drawBox({
+                        pos: [wx, wy, wz],
+                        rotY: this.rotY,
+                        rotX: localRotX,
+                        scale: [sx, sy, sz],
+                        color,
+                        texture: whiteTex
+                    });
+                };
+
+                // Torso (Camiseta)
+                helperPart(0, 1.25, 0, 0.92, 1.0, 0.52, shirt);
+                // Estampado frontal (Metallica / AC/DC)
+                helperPart(0, 1.38, 0.27, 0.54, 0.24, 0.04, logoColor);
+
+                // Cabeza
+                helperPart(0, 2.08, 0, 0.70, 0.76, 0.66, skin);
+                // Ojos blancos y pupilas
+                helperPart(-0.16, 2.15, 0.34, 0.15, 0.15, 0.04, [1, 1, 1]);
+                helperPart(0.16, 2.15, 0.34, 0.15, 0.15, 0.04, [1, 1, 1]);
+                helperPart(-0.16, 2.15, 0.365, 0.06, 0.06, 0.02, [0, 0, 0]);
+                helperPart(0.16, 2.15, 0.365, 0.06, 0.06, 0.02, [0, 0, 0]);
+                // Boca / Sonrisa
+                helperPart(0, 1.88, 0.34, 0.34, 0.11, 0.04, isBeavis ? [0.5, 0.1, 0.1] : [0.95, 0.95, 0.95]);
+
+                // Cabello característico
+                if (isBeavis) {
+                    helperPart(0, 2.62, 0.08, 0.74, 0.42, 0.76, hair, -0.18);
+                } else {
+                    helperPart(0, 2.56, -0.02, 0.76, 0.30, 0.72, hair, 0);
+                }
+
+                // Brazos articulados
+                helperPart(-0.60, 1.32, Math.sin(armSwing) * 0.22, 0.23, 0.82, 0.23, skin, armSwing);
+                helperPart(0.60, 1.32, Math.sin(-armSwing) * 0.22, 0.23, 0.82, 0.23, skin, -armSwing);
+
+                // Shorts y Piernas articuladas
+                helperPart(-0.24, 0.62, 0, 0.34, 0.36, 0.38, shorts, -legSwing * 0.5);
+                helperPart(0.24, 0.62, 0, 0.34, 0.36, 0.38, shorts, legSwing * 0.5);
+
+                helperPart(-0.24, 0.30, Math.sin(-legSwing) * 0.18, 0.21, 0.44, 0.21, skin, -legSwing);
+                helperPart(0.24, 0.30, Math.sin(legSwing) * 0.18, 0.21, 0.44, 0.21, skin, legSwing);
+
+                // Zapatos
+                helperPart(-0.24, 0.08, 0.08 + Math.sin(-legSwing) * 0.22, 0.26, 0.16, 0.40, shoe, 0);
+                helperPart(0.24, 0.08, 0.08 + Math.sin(legSwing) * 0.22, 0.26, 0.16, 0.40, shoe, 0);
+            }
+        }
+
+        /* =========================================================================
+           CLASE 5: UMLUseCaseTracker - Trazabilidad y Verificación de Casos de Uso
+           ========================================================================= */
+        class UMLUseCaseTracker {
+            constructor() {
+                this.executed = new Set();
+                this.lastTrace = 'CU001: Menú principal listo';
+                this.collapsed = false;
+            }
+
+            reset() {
+                this.executed.clear();
+            }
+
+            trigger(cuId, detailText) {
+                this.executed.add(cuId);
+                this.lastTrace = `${cuId}: ${detailText}`;
+
+                const activeLabel = document.getElementById('uml-active-trace');
+                if (activeLabel) activeLabel.textContent = this.lastTrace;
+
+                ['CU001', 'CU002', 'CU003', 'CU004', 'CU005', 'CU006'].forEach(id => {
+                    const pill = document.getElementById(`cu-pill-${id}`);
+                    if (pill) {
+                        if (id === cuId) pill.classList.add('active-cu');
+                        else pill.classList.remove('active-cu');
+                    }
+                });
+            }
+
+            updatePreconditions(isGrounded, hasNearbyObject) {
+                const gEl = document.getElementById('uml-precond-ground');
+                const nEl = document.getElementById('uml-precond-near');
+                if (gEl) {
+                    gEl.textContent = isGrounded ? 'Precond. Suelo: SÍ' : 'Precond. Suelo: NO';
+                    gEl.style.color = isGrounded ? '#4ade80' : '#fbbf24';
+                }
+                if (nEl) {
+                    nEl.textContent = hasNearbyObject ? 'Cerca Obj: SÍ [E]' : 'Cerca Obj: NO';
+                    nEl.style.color = hasNearbyObject ? '#facc15' : '#a1a1aa';
+                }
+            }
+        }
+
+        /* =========================================================================
+           CLASE 6: InputController - Teclado, Botones en Pantalla y Cámara Orbital
+           ========================================================================= */
+        class InputController {
+            constructor(canvas, game) {
+                this.game = game;
+                this.keys = { forward: false, backward: false, left: false, right: false };
+                this.yaw = 0;
+                this.pitch = 0.36;
+                this.distance = 11.5;
+                this.dragging = false;
+                this.lastX = 0;
+                this.lastY = 0;
+
+                this.bindKeyboard();
+                this.bindPointerCamera(canvas);
+                this.bindTouchPad();
+            }
+
+            bindKeyboard() {
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'KeyW' || e.code === 'ArrowUp') this.keys.forward = true;
+                    if (e.code === 'KeyS' || e.code === 'ArrowDown') this.keys.backward = true;
+                    if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.keys.left = true;
+                    if (e.code === 'KeyD' || e.code === 'ArrowRight') this.keys.right = true;
+
+                    if (e.code === 'Space' && this.game.state === 'PLAYING') {
+                        e.preventDefault();
+                        this.game.performJump();
+                    }
+                    if (e.code === 'KeyE' && this.game.state === 'PLAYING') {
+                        this.game.performInteract();
+                    }
+                    if (e.code === 'KeyR' && this.game.state === 'PLAYING') {
+                        this.game.startNewGame();
+                    }
+                    if (e.code === 'KeyC') {
+                        this.game.toggleCameraMode();
+                    }
+                    if (e.code === 'Escape' || e.code === 'KeyP') {
+                        if (this.game.state === 'PLAYING') this.game.pauseGame();
+                        else if (this.game.state === 'PAUSED') this.game.resumeGame();
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    if (e.code === 'KeyW' || e.code === 'ArrowUp') this.keys.forward = false;
+                    if (e.code === 'KeyS' || e.code === 'ArrowDown') this.keys.backward = false;
+                    if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.keys.left = false;
+                    if (e.code === 'KeyD' || e.code === 'ArrowRight') this.keys.right = false;
+                });
+            }
+
+            bindPointerCamera(canvas) {
+                canvas.addEventListener('mousedown', (e) => {
+                    this.dragging = true;
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                });
+                window.addEventListener('mouseup', () => { this.dragging = false; });
+                window.addEventListener('mousemove', (e) => {
+                    if (!this.dragging || this.game.state !== 'PLAYING') return;
+                    const dx = e.clientX - this.lastX;
+                    const dy = e.clientY - this.lastY;
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                    this.yaw -= dx * 0.007;
+                    this.pitch = Math.max(0.14, Math.min(1.15, this.pitch + dy * 0.007));
+                });
+
+                canvas.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        this.dragging = true;
+                        this.lastX = e.touches[0].clientX;
+                        this.lastY = e.touches[0].clientY;
+                    }
+                }, { passive: true });
+                canvas.addEventListener('touchend', () => { this.dragging = false; });
+                canvas.addEventListener('touchmove', (e) => {
+                    if (!this.dragging || e.touches.length !== 1 || this.game.state !== 'PLAYING') return;
+                    const dx = e.touches[0].clientX - this.lastX;
+                    const dy = e.touches[0].clientY - this.lastY;
+                    this.lastX = e.touches[0].clientX;
+                    this.lastY = e.touches[0].clientY;
+                    this.yaw -= dx * 0.008;
+                    this.pitch = Math.max(0.14, Math.min(1.15, this.pitch + dy * 0.008));
+                }, { passive: true });
+            }
+
+            bindTouchPad() {
+                const map = [
+                    ['btn-pad-up', 'forward'],
+                    ['btn-pad-down', 'backward'],
+                    ['btn-pad-left', 'left'],
+                    ['btn-pad-right', 'right']
+                ];
+                map.forEach(([id, key]) => {
+                    const btn = document.getElementById(id);
+                    const press = (e) => { e.preventDefault(); this.keys[key] = true; btn.classList.add('pressed'); };
+                    const release = (e) => { e.preventDefault(); this.keys[key] = false; btn.classList.remove('pressed'); };
+                    btn.addEventListener('mousedown', press);
+                    btn.addEventListener('mouseup', release);
+                    btn.addEventListener('mouseleave', release);
+                    btn.addEventListener('touchstart', press, { passive: false });
+                    btn.addEventListener('touchend', release, { passive: false });
+                });
+            }
+        }
+
+        /* =========================================================================
+           CLASE 7: LevelBuilder - Escenarios de la Serie (Maxi Mart, Callejón, Casa)
+           ========================================================================= */
+        class LevelBuilder {
+            constructor(texManager) {
+                this.tex = texManager.textures;
+                this.platforms = [];
+                this.decorations = [];
+                this.hazards = [];
+                this.interactables = [];
+                this.bridgePlatform = null;
+                this.sofaGoal = null;
+            }
+
+            addPlatform(x, y, z, w, h, d, options = {}) {
+                const plat = {
+                    x, y, z, w, h, d,
+                    color: options.color || [1, 1, 1],
+                    texture: options.texture || this.tex.white,
+                    texScale: options.texScale || [1, 1],
+                    active: options.active !== undefined ? options.active : true,
+                    moveAxis: options.moveAxis || null,
+                    moveRange: options.moveRange || 0,
+                    moveSpeed: options.moveSpeed || 0,
+                    baseX: x,
+                    baseY: y,
+                    deltaX: 0,
+                    deltaY: 0
+                };
+                this.platforms.push(plat);
+                return plat;
+            }
+
+            addDecor(x, y, z, w, h, d, color, texture = null, texScale = [1, 1], emissive = [0, 0, 0]) {
+                this.decorations.push({
+                    x, y, z, w, h, d,
+                    color,
+                    texture: texture || this.tex.white,
+                    texScale,
+                    emissive
+                });
+            }
+
+            build(npcType) {
+                this.platforms = [];
+                this.decorations = [];
+                this.hazards = [];
+                this.interactables = [];
+
+                // =================================================================
+                // ZONA 1: ESTACIONAMIENTO DEL MAXI MART (Z: +6 hasta -18)
+                // =================================================================
+                this.addPlatform(0, -0.5, -6, 16, 1, 24, {
+                    color: [1, 1, 1],
+                    texture: this.tex.asphalt,
+                    texScale: [3, 4]
+                });
+                // Aceras laterales del Maxi Mart
+                this.addPlatform(-7.2, 0.1, -6, 1.8, 0.3, 24, { color: [0.75, 0.78, 0.82] });
+                this.addPlatform(7.2, 0.1, -6, 1.8, 0.3, 24, { color: [0.75, 0.78, 0.82] });
+
+                // Edificio / Fachada del Maxi Mart a la izquierda
+                this.addDecor(-10.2, 3.2, -5, 4.2, 6.4, 15, [1, 1, 1], this.tex.brick, [3, 2]);
+                // Letrero luminoso MAXI MART
+                this.addDecor(-8.0, 5.4, -5, 0.3, 1.6, 8.5, [1, 1, 1], this.tex.maximart, [1, 1], [0.22, 0.2, 0.05]);
+                // Máquina dispensadora de Slushies frente a la tienda
+                this.addDecor(-6.8, 1.4, -2, 1.3, 2.4, 1.6, [0.9, 0.15, 0.15]);
+                this.addDecor(-6.1, 1.6, -2, 0.15, 1.1, 1.2, [0.15, 0.85, 0.95], null, [1, 1], [0.1, 0.4, 0.5]);
+
+                // Contenedor de basura verde escalable (plataforma elevada)
+                this.addPlatform(5.2, 0.8, -11, 2.8, 1.6, 3.6, { color: [0.12, 0.52, 0.24] });
+
+                // Carritos de supermercado patrullando como obstáculos móviles
+                this.hazards.push({
+                    type: 'CART',
+                    x: -3, y: 0.65, z: -8,
+                    w: 1.4, h: 1.3, d: 1.8,
+                    minX: -5.5, maxX: 5.5,
+                    speed: 4.5, dir: 1,
+                    color: [0.85, 0.88, 0.92]
+                });
+                this.hazards.push({
+                    type: 'CART',
+                    x: 4, y: 0.65, z: -14.5,
+                    w: 1.4, h: 1.3, d: 1.8,
+                    minX: -5.5, maxX: 5.5,
+                    speed: 5.5, dir: -1,
+                    color: [0.85, 0.88, 0.92]
+                });
+
+                // =================================================================
+                // ZONA 2: CALLEJÓN DE HIGHLAND Y BRECHAS TÓXICAS (Z: -18 hasta -56)
+                // =================================================================
+                // Lago tóxico verde radiactivo debajo de las brechas
+                this.addDecor(0, -1.6, -38, 22, 0.3, 42, [0.2, 0.95, 0.25], null, [1, 1], [0.1, 0.45, 0.1]);
+
+                // Plataforma móvil horizontal sobre la primera brecha tóxica
+                this.addPlatform(0, -0.2, -22.5, 4.2, 0.6, 4.0, {
+                    color: [0.95, 0.65, 0.1],
+                    moveAxis: 'X',
+                    moveRange: 4.4,
+                    moveSpeed: 2.1
+                });
+
+                // Isla central del callejón (con barriles tóxicos rodando)
+                this.addPlatform(0, -0.5, -33.5, 13, 1, 11, {
+                    color: [0.9, 0.9, 0.9],
+                    texture: this.tex.asphalt,
+                    texScale: [2, 2]
+                });
+                // Muros de ladrillo del callejón
+                this.addDecor(-7.2, 2.2, -33.5, 1.2, 4.4, 11, [1, 1, 1], this.tex.brick, [2, 1]);
+                this.addDecor(7.2, 2.2, -33.5, 1.2, 4.4, 11, [1, 1, 1], this.tex.brick, [2, 1]);
+
+                // Barril tóxico móvil en la isla central
+                this.hazards.push({
+                    type: 'BARREL',
+                    x: 4.5, y: 0.7, z: -33.5,
+                    w: 1.3, h: 1.4, d: 1.3,
+                    minX: -5.4, maxX: 5.4,
+                    speed: 5.8, dir: -1,
+                    color: [0.92, 0.25, 0.1]
+                });
+
+                // Plataforma móvil vertical hacia la zona del generador
+                this.addPlatform(0, 0.2, -43.5, 4.6, 0.6, 4.6, {
+                    color: [0.22, 0.74, 0.97],
+                    moveAxis: 'Y',
+                    moveRange: 1.1,
+                    moveSpeed: 2.4
+                });
+
+                // Plataforma del Generador Eléctrico (antes del gran abismo)
+                this.addPlatform(0, -0.5, -51.5, 11, 1, 6.5, {
+                    color: [0.38, 0.42, 0.48]
+                });
+
+                // Puente desplegable hacia la Sala de Estar (inicia inactivo/elevado)
+                this.bridgePlatform = this.addPlatform(0, 4.5, -59.5, 4.6, 0.5, 9.5, {
+                    color: [0.98, 0.80, 0.08],
+                    active: false
+                });
+
+                // =================================================================
+                // ZONA 3: SALA DE ESTAR DE BEAVIS AND BUTT-HEAD (Z: -64 hasta -80)
+                // =================================================================
+                this.addPlatform(0, -0.5, -72, 16, 1, 16, {
+                    color: [1, 1, 1],
+                    texture: this.tex.carpet,
+                    texScale: [3, 3]
+                });
+
+                // Paredes de la sala con póster de Heavy Metal
+                this.addDecor(0, 3.0, -79.8, 16, 6.0, 0.5, [0.86, 0.80, 0.68]);
+                this.addDecor(-7.8, 3.0, -72, 0.5, 6.0, 16, [0.82, 0.76, 0.64]);
+                this.addDecor(7.8, 3.0, -72, 0.5, 6.0, 16, [0.82, 0.76, 0.64]);
+                this.addDecor(-4.2, 3.2, -79.4, 2.6, 2.8, 0.15, [1, 1, 1], this.tex.poster);
+                this.addDecor(4.2, 3.2, -79.4, 2.6, 2.8, 0.15, [1, 1, 1], this.tex.poster);
+
+                // Icónico Sofá marrón desgastado (Meta Final CU006)
+                this.addDecor(0, 0.55, -70.5, 5.4, 1.1, 2.3, [0.65, 0.30, 0.08]); // Asiento
+                this.addDecor(0, 1.45, -69.6, 5.4, 1.3, 0.6, [0.55, 0.24, 0.06]); // Respaldo
+                this.addDecor(-2.5, 0.9, -70.5, 0.6, 1.2, 2.3, [0.55, 0.24, 0.06]); // Brazo izq
+                this.addDecor(2.5, 0.9, -70.5, 0.6, 1.2, 2.3, [0.55, 0.24, 0.06]); // Brazo der
+
+                // Televisor CRT Retro con pantalla animada en WebGL
+                this.addDecor(0, 1.5, -76.8, 3.8, 2.8, 2.0, [0.16, 0.16, 0.18]);
+                this.addDecor(0, 1.65, -75.75, 3.0, 2.0, 0.1, [1, 1, 1], this.tex.tv, [1, 1], [0.25, 0.25, 0.25]);
+
+                // Zona objetivo final (Sofá)
+                this.sofaGoal = { x: 0, z: -71.5, radius: 3.6 };
+
+                // =================================================================
+                // OBJETOS INTERACTUABLES (CU004) Y NPC COMPAÑERO
+                // =================================================================
+                // 1. NPC en el estacionamiento del Maxi Mart
+                const npcName = npcType === 'beavis' ? 'Beavis' : 'Butt-Head';
+                this.interactables.push({
+                    id: 'npc',
+                    kind: 'NPC',
+                    label: `Hablar con ${npcName} (NPC)`,
+                    x: -4.6, y: 0, z: -2.5,
+                    radius: 3.3,
+                    collected: false
+                });
+
+                // 2. Objeto 1: Nachos con Queso (sobre el contenedor del Maxi Mart)
+                this.interactables.push({
+                    id: 'nachos',
+                    kind: 'ITEM',
+                    label: 'Recoger Nachos con Queso',
+                    x: 5.2, y: 2.1, z: -11.0,
+                    radius: 2.4,
+                    color: [0.98, 0.85, 0.1],
+                    collected: false
+                });
+
+                // 3. Objeto 2: Ultra Slushie (en la isla central del callejón)
+                this.interactables.push({
+                    id: 'slushie',
+                    kind: 'ITEM',
+                    label: 'Recoger Ultra Slushie Azul',
+                    x: -4.2, y: 0.7, z: -36.5,
+                    radius: 2.4,
+                    color: [0.15, 0.85, 0.98],
+                    collected: false
+                });
+
+                // 4. Objeto 3: Control Remoto Universal (plataforma del generador)
+                this.interactables.push({
+                    id: 'remote',
+                    kind: 'ITEM',
+                    label: 'Recoger Control Remoto Universal',
+                    x: -3.6, y: 0.7, z: -51.5,
+                    radius: 2.4,
+                    color: [0.95, 0.25, 0.35],
+                    collected: false
+                });
+
+                // 5. Interruptor / Generador del puente hacia la casa
+                this.interactables.push({
+                    id: 'generator',
+                    kind: 'SWITCH',
+                    label: 'Activar Generador Eléctrico (Desplegar Puente)',
+                    x: 3.5, y: 0.7, z: -51.5,
+                    radius: 2.7,
+                    color: [0.2, 0.9, 0.3],
+                    collected: false
+                });
+            }
+        }
+
+        /* =========================================================================
+           CLASE 8: BeavisButtHeadGame - Controlador Principal del Juego y Simulación
+           ========================================================================= */
+        class BeavisButtHeadGame {
+            constructor() {
+                this.canvas = document.getElementById('gl-canvas');
+                this.renderer = new WebGLRendererNative(this.canvas);
+                this.texManager = new ProceduralTextures(this.renderer.gl);
+                this.levelBuilder = new LevelBuilder(this.texManager);
+                this.umlTracker = new UMLUseCaseTracker();
+                this.input = new InputController(this.canvas, this);
+
+                this.state = 'MENU'; // 'MENU' | 'LOADING' | 'PLAYING' | 'PAUSED' | 'VICTORY' | 'GAMEOVER'
+                this.selectedChar = 'beavis';
+                this.npcChar = 'butthead';
+                this.cameraMode = 'DYNAMIC'; // 'DYNAMIC' | 'OVERVIEW'
+
+                this.playerMesh = new CharacterMesh('beavis');
+                this.npcMesh = new CharacterMesh('butthead');
+
+                this.velocity = [0, 0, 0];
+                this.isGrounded = false;
+                this.health = 3;
+                this.score = 0;
+                this.itemsCount = 0;
+                this.bridgeOpen = false;
+                this.npcTalked = false;
+                this.npcDialogIndex = 0;
+                this.elapsedTime = 0;
+                this.invulnTimer = 0;
+                this.lastFrameTime = performance.now();
+
+                this.npcLines = {
+                    beavis: [
+                        '¡Heh-heh! ¡Oye Butt-Head! Agarra los Nachos en el contenedor del Maxi Mart y el Ultra Slushie en el callejón. ¡Fuego! ¡Fuego!',
+                        '¡Heh-heh-heh! No olvides el Control Remoto y activa el generador para bajar el puente hacia nuestro sofá, dumbass.'
+                    ],
+                    butthead: [
+                        'Uh-huh-huh... Oye Beavis, no te caigas en el agua verde tóxica. Recoge los Nachos, el Slushie y el Control Remoto.',
+                        'Uh-huh-huh... Activa el generador al final del callejón para cruzar al sofá y ver MTV. Esto va a estar cool.'
+                    ]
+                };
+
+                this.bindUIButtons();
+                this.setupDemoPreviewScene();
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            setupDemoPreviewScene() {
+                this.levelBuilder.build(this.npcChar);
+                this.playerMesh = new CharacterMesh(this.selectedChar);
+                this.playerMesh.pos = [0, 0, 2];
+                this.npcMesh = new CharacterMesh(this.npcChar);
+                this.npcMesh.pos = [-4.6, 0, -2.5];
+            }
+
+            bindUIButtons() {
+                // Selección de personaje en el menú
+                const cardBeavis = document.getElementById('card-beavis');
+                const cardButthead = document.getElementById('card-butthead');
+                const tagBeavis = document.getElementById('tag-beavis');
+                const tagButthead = document.getElementById('tag-butthead');
+
+                cardBeavis.addEventListener('click', () => {
+                    this.selectedChar = 'beavis';
+                    this.npcChar = 'butthead';
+                    cardBeavis.classList.add('selected');
+                    cardButthead.classList.remove('selected');
+                    tagBeavis.textContent = 'JUGADOR';
+                    tagBeavis.className = 'role-tag role-player';
+                    tagButthead.textContent = 'NPC';
+                    tagButthead.className = 'role-tag role-npc';
+                });
+
+                cardButthead.addEventListener('click', () => {
+                    this.selectedChar = 'butthead';
+                    this.npcChar = 'beavis';
+                    cardButthead.classList.add('selected');
+                    cardBeavis.classList.remove('selected');
+                    tagButthead.textContent = 'JUGADOR';
+                    tagButthead.className = 'role-tag role-player';
+                    tagBeavis.textContent = 'NPC';
+                    tagBeavis.className = 'role-tag role-npc';
+                });
+
+                // Botones del menú principal
+                document.getElementById('btn-start-game').addEventListener('click', () => this.startNewGame());
+                document.getElementById('btn-toggle-cam-menu').addEventListener('click', () => this.toggleCameraMode());
+                document.getElementById('btn-open-uml').addEventListener('click', () => {
+                    document.getElementById('modal-uml').classList.remove('hidden');
+                });
+                document.getElementById('btn-close-uml').addEventListener('click', () => {
+                    document.getElementById('modal-uml').classList.add('hidden');
+                });
+
+                // Botones HUD en partida
+                document.getElementById('btn-hud-cam').addEventListener('click', () => this.toggleCameraMode());
+                document.getElementById('btn-hud-restart').addEventListener('click', () => this.startNewGame());
+                document.getElementById('btn-hud-pause').addEventListener('click', () => this.pauseGame());
+
+                const btnJump = document.getElementById('btn-action-jump');
+                btnJump.addEventListener('mousedown', (e) => { e.preventDefault(); this.performJump(); });
+                btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); this.performJump(); }, { passive: false });
+
+                document.getElementById('btn-action-interact').addEventListener('click', () => this.performInteract());
+
+                // Diálogo / Mensajes CU004
+                document.getElementById('btn-dialog-close').addEventListener('click', () => this.hideDialog());
+                document.getElementById('btn-npc-done').addEventListener('click', () => this.hideDialog());
+                document.getElementById('btn-npc-next-line').addEventListener('click', () => this.performInteract());
+
+                // Toggle Monitor UML
+                document.getElementById('btn-toggle-uml-panel').addEventListener('click', (e) => {
+                    const body = document.getElementById('uml-monitor-body');
+                    const hidden = body.classList.toggle('hidden');
+                    e.target.textContent = hidden ? 'Mostrar' : 'Ocultar';
+                });
+
+                // Botones Pausa (CU005)
+                document.getElementById('btn-pause-resume').addEventListener('click', () => this.resumeGame());
+                document.getElementById('btn-pause-restart').addEventListener('click', () => this.startNewGame());
+                document.getElementById('btn-pause-uml').addEventListener('click', () => {
+                    document.getElementById('modal-uml').classList.remove('hidden');
+                });
+                document.getElementById('btn-pause-menu').addEventListener('click', () => this.showMainMenu());
+
+                // Botones Victoria / Derrota (CU006)
+                document.getElementById('btn-vic-replay').addEventListener('click', () => this.startNewGame());
+                document.getElementById('btn-vic-menu').addEventListener('click', () => this.showMainMenu());
+                document.getElementById('btn-over-restart').addEventListener('click', () => this.startNewGame());
+                document.getElementById('btn-over-menu').addEventListener('click', () => this.showMainMenu());
+            }
+
+            toggleCameraMode() {
+                this.cameraMode = this.cameraMode === 'DYNAMIC' ? 'OVERVIEW' : 'DYNAMIC';
+                const label = this.cameraMode === 'DYNAMIC' ? '3ra Persona Dinámica' : 'Panorámica Elevada';
+                document.getElementById('menu-cam-label').textContent = label;
+                this.input.pitch = this.cameraMode === 'DYNAMIC' ? 0.36 : 0.78;
+                this.input.distance = this.cameraMode === 'DYNAMIC' ? 11.5 : 18.0;
+            }
+
+            hideAllOverlays() {
+                ['screen-menu', 'screen-loading', 'hud-layer', 'screen-pause', 'screen-victory', 'screen-gameover'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                this.hideDialog();
+            }
+
+            // CU001: Iniciar juego -> <<include>> Cargar nivel
+            startNewGame() {
+                this.state = 'LOADING';
+                this.npcChar = this.selectedChar === 'beavis' ? 'butthead' : 'beavis';
+                this.health = 3;
+                this.score = 0;
+                this.itemsCount = 0;
+                this.bridgeOpen = false;
+                this.npcTalked = false;
+                this.npcDialogIndex = 0;
+                this.elapsedTime = 0;
+                this.invulnTimer = 0;
+                this.umlTracker.reset();
+
+                this.hideAllOverlays();
+                document.getElementById('screen-loading').classList.remove('hidden');
+                this.umlTracker.trigger('CU001', 'Iniciar juego -> <<include>> Cargar nivel');
+
+                const bar = document.getElementById('loading-progress');
+                const detail = document.getElementById('loading-detail');
+                bar.style.width = '25%';
+                detail.textContent = 'Generando Maxi Mart, Callejón Tóxico y Sala de Estar en WebGL...';
+
+                setTimeout(() => {
+                    this.levelBuilder.build(this.npcChar);
+                    this.playerMesh = new CharacterMesh(this.selectedChar);
+                    this.playerMesh.pos = [0, 0, 3.0];
+                    this.playerMesh.rotY = Math.PI;
+                    this.velocity = [0, 0, 0];
+
+                    this.npcMesh = new CharacterMesh(this.npcChar);
+                    this.npcMesh.pos = [-4.6, 0, -2.5];
+                    this.npcMesh.rotY = 0.6;
+
+                    bar.style.width = '100%';
+                    detail.textContent = '¡Nivel cargado! Actores listos.';
+                }, 220);
+
+                setTimeout(() => {
+                    this.hideAllOverlays();
+                    document.getElementById('hud-layer').classList.remove('hidden');
+                    this.updateHUD();
+                    this.state = 'PLAYING';
+                    this.lastFrameTime = performance.now();
+                }, 520);
+            }
+
+            // CU003: Saltar -> <<include>> Reproducir animación de salto (Precondición: isGrounded)
+            performJump() {
+                if (this.state !== 'PLAYING' || !this.isGrounded) return;
+                this.velocity[1] = 13.8;
+                this.isGrounded = false;
+                this.umlTracker.trigger('CU003', 'Saltar -> <<include>> Reproducir animación de salto');
+            }
+
+            // CU004: Interactuar con objetos -> <<include>> Mostrar mensaje o acción / <<extend>> Hablar con NPC
+            performInteract() {
+                if (this.state !== 'PLAYING') return;
+                const nearest = this.findNearestInteractable();
+                if (!nearest) {
+                    this.showDialog(
+                        'CU004 (Precondición)',
+                        'No hay objetos cerca',
+                        'Acércate a tu compañero NPC en el Maxi Mart, a los objetos clave o al Generador del callejón.',
+                        false
+                    );
+                    return;
+                }
+
+                if (nearest.kind === 'NPC') {
+                    const lines = this.npcLines[this.npcChar];
+                    const msg = lines[this.npcDialogIndex % lines.length];
+                    this.npcDialogIndex++;
+                    if (!this.npcTalked) {
+                        this.npcTalked = true;
+                        this.score += 200;
+                    }
+                    this.umlTracker.trigger('CU004', '<<extend>> Hablar / Interactuar con NPC');
+                    const npcTitle = this.npcChar === 'beavis' ? 'Beavis (NPC)' : 'Butt-Head (NPC)';
+                    this.showDialog('CU004 <<extend>> Hablar / Interactuar con NPC', `Diálogo con ${npcTitle}`, `"${msg}"`, true);
+                    this.updateHUD();
+                } else if (nearest.kind === 'ITEM' && !nearest.collected) {
+                    nearest.collected = true;
+                    this.itemsCount++;
+                    this.score += 300;
+                    this.umlTracker.trigger('CU004', 'Interactuar con objetos -> <<include>> Mostrar mensaje o acción');
+                    const reaction = this.selectedChar === 'beavis'
+                        ? '¡Heh-heh! ¡Esto está súper cool! ¡Sigamos avanzando!'
+                        : 'Uh-huh-huh... Buen botín, dumbass. Vamos hacia el sofá.';
+                    this.showDialog('CU004 <<include>> Mostrar mensaje o acción', `¡${nearest.label}! (+300 pts)`, reaction, false);
+                    this.updateHUD();
+                } else if (nearest.kind === 'SWITCH') {
+                    if (!this.bridgeOpen) {
+                        this.bridgeOpen = true;
+                        this.score += 350;
+                        const bridge = this.levelBuilder.bridgePlatform;
+                        bridge.active = true;
+                        bridge.y = -0.45;
+                        this.umlTracker.trigger('CU004', 'Activar Generador -> <<include>> Mostrar mensaje o acción');
+                        this.showDialog(
+                            'CU004 <<include>> Mostrar mensaje o acción',
+                            '¡Generador Activado! Puente Desplegado',
+                            '¡BZZZT! El puente amarillo hacia la Sala de Estar ha bajado sobre el abismo tóxico.',
+                            false
+                        );
+                        this.updateHUD();
+                    } else {
+                        this.showDialog(
+                            'CU004 <<include>> Mostrar mensaje o acción',
+                            'Puente ya desplegado',
+                            'El puente hacia tu casa ya está listo. ¡Cruza y siéntate en el sofá!',
+                            false
+                        );
+                    }
+                }
+            }
+
+            findNearestInteractable() {
+                let best = null;
+                let bestDist = Infinity;
+                for (const obj of this.levelBuilder.interactables) {
+                    if (obj.collected) continue;
+                    const d = Math.hypot(this.playerMesh.pos[0] - obj.x, this.playerMesh.pos[2] - obj.z);
+                    if (d <= obj.radius && d < bestDist) {
+                        best = obj;
+                        bestDist = d;
+                    }
+                }
+                return best;
+            }
+
+            showDialog(tag, title, text, isNpc) {
+                const box = document.getElementById('hud-dialog-box');
+                document.getElementById('dialog-uml-tag').textContent = tag;
+                document.getElementById('dialog-title').textContent = title;
+                document.getElementById('dialog-text').textContent = text;
+
+                const npcBtns = document.getElementById('dialog-npc-actions');
+                if (isNpc) npcBtns.classList.remove('hidden');
+                else npcBtns.classList.add('hidden');
+
+                box.classList.remove('hidden');
+            }
+
+            hideDialog() {
+                document.getElementById('hud-dialog-box').classList.add('hidden');
+            }
+
+            // CU005: Pausar / Menú -> <<include>> Mostrar menú principal
+            pauseGame() {
+                if (this.state !== 'PLAYING') return;
+                this.state = 'PAUSED';
+                this.umlTracker.trigger('CU005', 'Pausar / Menú -> <<include>> Mostrar menú principal');
+                document.getElementById('screen-pause').classList.remove('hidden');
+            }
+
+            resumeGame() {
+                if (this.state !== 'PAUSED') return;
+                document.getElementById('screen-pause').classList.add('hidden');
+                this.state = 'PLAYING';
+                this.lastFrameTime = performance.now();
+            }
+
+            showMainMenu() {
+                this.state = 'MENU';
+                this.umlTracker.trigger('CU005', '<<include>> Mostrar menú principal');
+                this.hideAllOverlays();
+                document.getElementById('screen-menu').classList.remove('hidden');
+            }
+
+            // CU006 <<extend>> Reiniciar nivel (si se pierde)
+            damageOrFall(reason) {
+                if (this.invulnTimer > 0) return;
+                this.health--;
+                this.invulnTimer = 1.4;
+                this.updateHUD();
+
+                if (this.health > 0) {
+                    // Respawn en punto seguro de la zona actual
+                    if (this.playerMesh.pos[2] < -46) {
+                        this.playerMesh.pos = [0, 0.5, -50.5];
+                    } else if (this.playerMesh.pos[2] < -20) {
+                        this.playerMesh.pos = [0, 0.5, -31.5];
+                    } else {
+                        this.playerMesh.pos = [0, 0.5, 3.0];
+                    }
+                    this.velocity = [0, 0, 0];
+                    this.showDialog('Sistema (Gestión de niveles)', '¡Ouch! Ten cuidado', `${reason} Te quedan ${this.health} puntos de aguante.`, false);
+                } else {
+                    this.state = 'GAMEOVER';
+                    this.umlTracker.trigger('CU006', '<<extend>> Reiniciar nivel (si se pierde)');
+                    this.hideAllOverlays();
+                    document.getElementById('gameover-msg').textContent = reason;
+                    document.getElementById('screen-gameover').classList.remove('hidden');
+                }
+            }
+
+            // CU006: Finalizar nivel -> <<include>> Mostrar pantalla de completado
+            triggerVictory() {
+                if (this.state === 'VICTORY') return;
+                this.state = 'VICTORY';
+                this.score += 500;
+                this.umlTracker.trigger('CU006', 'Finalizar nivel -> <<include>> Mostrar pantalla de completado');
+
+                this.hideAllOverlays();
+                document.getElementById('screen-victory').classList.remove('hidden');
+
+                const pName = this.selectedChar === 'beavis' ? 'Beavis' : 'Butt-Head';
+                const nName = this.npcChar === 'beavis' ? 'Beavis' : 'Butt-Head';
+                document.getElementById('vic-player').textContent = pName;
+                document.getElementById('vic-npc').textContent = nName;
+                document.getElementById('vic-score').textContent = `${this.score} pts | ${this.formatTime(this.elapsedTime)}`;
+                document.getElementById('victory-phrase').textContent = this.selectedChar === 'beavis'
+                    ? `"¡Heh-heh! ¡Llegamos al sofá con ${this.itemsCount}/3 objetos! ¡MTV rules!"`
+                    : `"Uh-huh-huh... Buen trabajo, dumbass. Ahora a ver videos en la tele."`;
+
+                const container = document.getElementById('vic-cu-badges');
+                container.innerHTML = '';
+                ['CU001', 'CU002', 'CU003', 'CU004', 'CU005', 'CU006'].forEach(cu => {
+                    const ok = this.umlTracker.executed.has(cu);
+                    const span = document.createElement('span');
+                    span.style.cssText = ok
+                        ? 'background:#22c55e; color:#000; font-weight:900; padding:2px 8px; border-radius:6px; border:1.5px solid #000; font-size:0.74rem;'
+                        : 'background:#3f3f46; color:#a1a1aa; padding:2px 8px; border-radius:6px; border:1px solid #52525b; font-size:0.74rem;';
+                    span.textContent = ok ? `✓ ${cu}` : cu;
+                    container.appendChild(span);
+                });
+            }
+
+            update(dt) {
+                // Actualizar textura dinámica del televisor CRT
+                this.texManager.updateTVTexture(performance.now() * 0.001);
+
+                if (this.state !== 'PLAYING') {
+                    // Rotación suave de cámara en menú o victoria
+                    this.input.yaw += dt * 0.25;
+                    return;
+                }
+
+                this.elapsedTime += dt;
+                if (this.invulnTimer > 0) this.invulnTimer -= dt;
+
+                // 1. Actualizar plataformas móviles (Zona 2)
+                for (const plat of this.levelBuilder.platforms) {
+                    plat.deltaX = 0;
+                    plat.deltaY = 0;
+                    if (plat.moveAxis === 'X') {
+                        const nextX = plat.baseX + Math.sin(this.elapsedTime * plat.moveSpeed) * plat.moveRange;
+                        plat.deltaX = nextX - plat.x;
+                        plat.x = nextX;
+                    } else if (plat.moveAxis === 'Y') {
+                        const nextY = plat.baseY + Math.sin(this.elapsedTime * plat.moveSpeed) * plat.moveRange;
+                        plat.deltaY = nextY - plat.y;
+                        plat.y = nextY;
+                    }
+                }
+
+                // 2. Actualizar obstáculos móviles (Carritos del Maxi Mart y Barriles del Callejón)
+                for (const haz of this.levelBuilder.hazards) {
+                    haz.x += haz.speed * haz.dir * dt;
+                    if (haz.x > haz.maxX) { haz.x = haz.maxX; haz.dir = -1; }
+                    if (haz.x < haz.minX) { haz.x = haz.minX; haz.dir = 1; }
+
+                    // Colisión AABB jugador vs obstáculo móvil
+                    const dx = Math.abs(this.playerMesh.pos[0] - haz.x);
+                    const dy = Math.abs((this.playerMesh.pos[1] + 1.0) - haz.y);
+                    const dz = Math.abs(this.playerMesh.pos[2] - haz.z);
+                    if (dx < (0.45 + haz.w * 0.45) && dy < (1.0 + haz.h * 0.45) && dz < (0.45 + haz.d * 0.45)) {
+                        const label = haz.type === 'CART' ? '¡Te atropelló un carrito del Maxi Mart!' : '¡Te golpeó un barril del callejón!';
+                        this.damageOrFall(label);
+                        return;
+                    }
+                }
+
+                // 3. Movimiento del Jugador (CU002)
+                let ix = 0, iz = 0;
+                if (this.input.keys.forward) iz -= 1;
+                if (this.input.keys.backward) iz += 1;
+                if (this.input.keys.left) ix -= 1;
+                if (this.input.keys.right) ix += 1;
+
+                const isMoving = (ix !== 0 || iz !== 0);
+                if (isMoving) {
+                    const len = Math.hypot(ix, iz);
+                    ix /= len; iz /= len;
+                    const cos = Math.cos(this.input.yaw);
+                    const sin = Math.sin(this.input.yaw);
+                    const wx = ix * cos + iz * sin;
+                    const wz = -ix * sin + iz * cos;
+
+                    const speed = 9.8;
+                    this.velocity[0] = wx * speed;
+                    this.velocity[2] = wz * speed;
+
+                    const targetRot = Math.atan2(wx, wz);
+                    let diff = targetRot - this.playerMesh.rotY;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    this.playerMesh.rotY += diff * Math.min(1, dt * 13);
+
+                    if (this.isGrounded) {
+                        this.umlTracker.trigger('CU002', 'Mover personaje -> <<include>> Reproducir animación de movimiento');
+                    }
+                } else {
+                    this.velocity[0] *= 0.78;
+                    this.velocity[2] *= 0.78;
+                }
+
+                // Gravedad y traslación
+                this.velocity[1] += -33.0 * dt;
+                const prevY = this.playerMesh.pos[1];
+                this.playerMesh.pos[0] += this.velocity[0] * dt;
+                this.playerMesh.pos[1] += this.velocity[1] * dt;
+                this.playerMesh.pos[2] += this.velocity[2] * dt;
+
+                // Colisión con plataformas
+                this.isGrounded = false;
+                for (const plat of this.levelBuilder.platforms) {
+                    if (!plat.active) continue;
+                    const topY = plat.y + plat.h / 2;
+                    const inX = Math.abs(this.playerMesh.pos[0] - plat.x) < (plat.w / 2 + 0.35);
+                    const inZ = Math.abs(this.playerMesh.pos[2] - plat.z) < (plat.d / 2 + 0.35);
+
+                    if (inX && inZ && prevY >= topY - 0.25 && this.playerMesh.pos[1] <= topY && this.velocity[1] <= 0) {
+                        this.playerMesh.pos[1] = topY;
+                        this.velocity[1] = 0;
+                        this.isGrounded = true;
+                        // Arrastrar jugador con la plataforma móvil
+                        this.playerMesh.pos[0] += plat.deltaX;
+                        this.playerMesh.pos[1] += plat.deltaY;
+                    }
+                }
+
+                // Animaciones de personajes
+                this.playerMesh.updateAnimation(dt, isMoving, this.isGrounded);
+                this.npcMesh.updateAnimation(dt, false, true);
+
+                // Detector de proximidad CU004
+                const nearest = this.findNearestInteractable();
+                const tip = document.getElementById('hud-proximity-tip');
+                if (nearest) {
+                    tip.textContent = `⚡ ${nearest.label} — Pulsa [E] o "INTERACTUAR"`;
+                    tip.classList.remove('hidden');
+                } else {
+                    tip.classList.add('hidden');
+                }
+
+                this.umlTracker.updatePreconditions(this.isGrounded, Boolean(nearest));
+
+                // Verificar caída en brecha tóxica
+                if (this.playerMesh.pos[1] < -1.3) {
+                    this.damageOrFall('¡Caíste en los desechos tóxicos del callejón!');
+                    return;
+                }
+
+                // Verificar llegada al Sofá frente al TV (CU006)
+                const goal = this.levelBuilder.sofaGoal;
+                if (goal && this.isGrounded) {
+                    const distGoal = Math.hypot(this.playerMesh.pos[0] - goal.x, this.playerMesh.pos[2] - goal.z);
+                    if (distGoal <= goal.radius) {
+                        if (this.itemsCount >= 3) {
+                            this.triggerVictory();
+                            return;
+                        } else {
+                            this.showDialog(
+                                'CU006 (Precondición de Misión)',
+                                '¡Aún faltan cosas para ver la tele!',
+                                `Llevas ${this.itemsCount}/3 objetos (Nachos, Ultra Slushie y Control Remoto). ¡Recógelos antes de sentarte en el sofá!`,
+                                false
+                            );
+                        }
+                    }
+                }
+
+                this.updateHUD();
+            }
+
+            updateHUD() {
+                document.getElementById('hud-actor-name').textContent = this.selectedChar === 'beavis' ? 'BEAVIS' : 'BUTT-HEAD';
+                let hearts = '';
+                for (let i = 0; i < 3; i++) hearts += i < this.health ? '❤️' : '🖤';
+                document.getElementById('hud-health').textContent = hearts;
+
+                // Zona actual según coordenada Z
+                const z = this.playerMesh.pos[2];
+                let zoneName = '1. Maxi Mart';
+                if (z < -62) zoneName = '3. Sala de Estar';
+                else if (z < -18) zoneName = '2. Callejón Tóxico';
+                document.getElementById('hud-zone').textContent = zoneName;
+
+                document.getElementById('hud-items').textContent = `${this.itemsCount}/3`;
+                document.getElementById('hud-subgoals').textContent =
+                    `Puente: ${this.bridgeOpen ? 'ON' : 'OFF'} | NPC: ${this.npcTalked ? '✅' : '❌'}`;
+                document.getElementById('hud-score-time').textContent =
+                    `${this.score} pts | ${this.formatTime(this.elapsedTime)}`;
+            }
+
+            formatTime(sec) {
+                const m = Math.floor(sec / 60).toString().padStart(2, '0');
+                const s = Math.floor(sec % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            }
+
+            renderScene() {
+                const target = [
+                    this.playerMesh.pos[0],
+                    this.playerMesh.pos[1] + 1.8,
+                    this.playerMesh.pos[2]
+                ];
+
+                const ox = Math.sin(this.input.yaw) * Math.cos(this.input.pitch) * this.input.distance;
+                const oy = Math.sin(this.input.pitch) * this.input.distance;
+                const oz = Math.cos(this.input.yaw) * Math.cos(this.input.pitch) * this.input.distance;
+                const eye = [target[0] + ox, target[1] + oy, target[2] + oz];
+
+                this.renderer.beginFrame(eye, target);
+
+                // 1. Renderizar Plataformas
+                for (const plat of this.levelBuilder.platforms) {
+                    if (!plat.active && plat === this.levelBuilder.bridgePlatform) {
+                        // Dibujar puente levantado verticalmente antes de ser activado
+                        this.renderer.drawBox({
+                            pos: [0, 3.8, -54.8],
+                            rotX: 1.35,
+                            scale: [plat.w, plat.h, plat.d],
+                            color: plat.color,
+                            texture: plat.texture
+                        });
+                        continue;
+                    }
+                    this.renderer.drawBox({
+                        pos: [plat.x, plat.y, plat.z],
+                        scale: [plat.w, plat.h, plat.d],
+                        color: plat.color,
+                        texture: plat.texture,
+                        texScale: plat.texScale
+                    });
+                }
+
+                // 2. Renderizar Decoraciones (Fachada Maxi Mart, TV CRT, Sofá, Pósters, Líquido tóxico)
+                for (const dec of this.levelBuilder.decorations) {
+                    this.renderer.drawBox({
+                        pos: [dec.x, dec.y, dec.z],
+                        scale: [dec.w, dec.h, dec.d],
+                        color: dec.color,
+                        emissive: dec.emissive,
+                        texture: dec.texture,
+                        texScale: dec.texScale
+                    });
+                }
+
+                // 3. Renderizar Obstáculos Móviles (Carritos de compras y Barriles)
+                for (const haz of this.levelBuilder.hazards) {
+                    this.renderer.drawBox({
+                        pos: [haz.x, haz.y, haz.z],
+                        rotY: haz.type === 'BARREL' ? this.elapsedTime * 5 * haz.dir : 0,
+                        scale: [haz.w, haz.h, haz.d],
+                        color: haz.color,
+                        texture: this.texManager.textures.white
+                    });
+                }
+
+                // 4. Renderizar Objetos Interactuables (Nachos, Slushie, Control Remoto, Generador)
+                const spin = performance.now() * 0.0025;
+                for (const obj of this.levelBuilder.interactables) {
+                    if (obj.collected || obj.kind === 'NPC') continue;
+                    if (obj.kind === 'ITEM') {
+                        const floatY = obj.y + Math.sin(spin * 1.5) * 0.18;
+                        this.renderer.drawBox({
+                            pos: [obj.x, floatY, obj.z],
+                            rotY: spin,
+                            scale: [0.85, 0.85, 0.85],
+                            color: obj.color,
+                            emissive: [0.22, 0.22, 0.1],
+                            texture: this.texManager.textures.white
+                        });
+                    } else if (obj.kind === 'SWITCH') {
+                        const swColor = this.bridgeOpen ? [0.15, 0.95, 0.35] : [0.95, 0.2, 0.2];
+                        this.renderer.drawBox({
+                            pos: [obj.x, obj.y, obj.z],
+                            scale: [1.3, 1.5, 1.1],
+                            color: [0.2, 0.2, 0.24],
+                            texture: this.texManager.textures.white
+                        });
+                        this.renderer.drawBox({
+                            pos: [obj.x, obj.y + 0.95, obj.z],
+                            scale: [0.55, 0.45, 0.55],
+                            color: swColor,
+                            emissive: swColor,
+                            texture: this.texManager.textures.white
+                        });
+                    }
+                }
+
+                // 5. Renderizar Actores 3D: Jugador y NPC
+                if (this.invulnTimer <= 0 || Math.floor(this.invulnTimer * 12) % 2 === 0) {
+                    this.playerMesh.render(this.renderer, this.texManager.textures.white);
+                }
+                this.npcMesh.render(this.renderer, this.texManager.textures.white);
+            }
+
+            loop(now) {
+                const dt = Math.min((now - this.lastFrameTime) / 1000, 0.05);
+                this.lastFrameTime = now;
+
+                this.update(dt);
+                this.renderScene();
+
+                requestAnimationFrame((t) => this.loop(t));
+            }
+        }
+
+        // Inicialización segura al cargar la ventana
+        window.onload = function () {
+            window.gameInstance = new BeavisButtHeadGame();
+        };
+    </script>
+</body>
+</html>
